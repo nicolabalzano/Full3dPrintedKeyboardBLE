@@ -1,0 +1,133 @@
+#include <behaviors.dtsi>
+#include <dt-bindings/zmk/keys.h>
+#include <dt-bindings/zmk/bt.h>
+
+/ {
+    behaviors {
+        mm_quote_dquote: quote_dquote {
+            compatible = "zmk,behavior-mod-morph";
+            #binding-cells = <0>;
+            bindings = <&kp MINUS>, <&kp LS(N2)>;
+            mods = <(MOD_LSFT|MOD_RSFT)>;
+        };
+
+        mm_comma_lt: comma_lt {
+            compatible = "zmk,behavior-mod-morph";
+            #binding-cells = <0>;
+            bindings = <&kp COMMA>, <&kp NUBS>;
+            mods = <(MOD_LSFT|MOD_RSFT)>;
+        };
+
+        mm_dot_gt: dot_gt {
+            compatible = "zmk,behavior-mod-morph";
+            #binding-cells = <0>;
+            bindings = <&kp DOT>, <&kp LS(NUBS)>;
+            mods = <(MOD_LSFT|MOD_RSFT)>;
+        };
+
+        mm_semi_colon: semi_colon {
+            compatible = "zmk,behavior-mod-morph";
+            #binding-cells = <0>;
+            bindings = <&kp LS(COMMA)>, <&kp LS(DOT)>;
+            mods = <(MOD_LSFT|MOD_RSFT)>;
+        };
+
+        lt1_quote: lt1_quote {
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "hold-preferred";
+            tapping-term-ms = <200>;
+            bindings = <&mo>, <&mm_quote_dquote>;
+        };
+
+        lt2_semi: lt2_semi {
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "hold-preferred";
+            tapping-term-ms = <200>;
+            bindings = <&mo>, <&mm_semi_colon>;
+        };
+    };
+
+    combos {
+        compatible = "zmk,combos";
+
+        combo_bt_clr {
+            timeout-ms = <500>;
+            key-positions = <0 5>;
+            bindings = <&bt BT_CLR>;
+        };
+
+        combo_bt_sel_0 {
+            timeout-ms = <50>;
+            key-positions = <1 2>;
+            bindings = <&bt BT_SEL 0>;
+        };
+
+        combo_bt_sel_1 {
+            timeout-ms = <50>;
+            key-positions = <2 3>;
+            bindings = <&bt BT_SEL 1>;
+        };
+
+        combo_bt_sel_2 {
+            timeout-ms = <50>;
+            key-positions = <3 4>;
+            bindings = <&bt BT_SEL 2>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+
+        default_layer {
+            bindings = <
+                &kp ESC   &kp Q    &kp W    &kp E      &kp R      &kp T              &kp Y      &kp U            &kp I      &kp O      &kp P      &kp BSPC
+                &kp LSFT  &kp A    &kp S    &kp D      &kp F      &kp G              &kp H      &kp J            &kp K      &kp L      &kp FSLH   &kp RET
+                &kp LCTRL &kp TAB  &kp Z    &kp X      &kp C      &lt 3 V            &lt 3 B    &kp N            &kp M      &mm_comma_lt  &mm_dot_gt    &lt1_quote 1 0
+                &none     &none    &none    &kp LALT   &lt 2 EXCL &mt LGUI SPACE &kp C_MUTE &kp SPACE  &lt2_semi 2 0    &kp DEL    &kp DEL    &lt2_semi 2 0      &kp SPACE &kp C_PP
+            >;
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>, <&inc_dec_kp C_BRI_UP C_BRI_DN>;
+        };
+
+        accent_layer {
+            bindings = <
+                &kp ESC   &kp Q    &kp W    &kp LS(LBKT) &kp LBKT &kp T              &kp Y      &kp BSLH         &kp EQUAL  &kp SEMI   &kp P      &kp BSPC
+                &kp LSFT  &kp SQT  &kp S    &kp D        &kp F    &kp G              &kp H      &kp J            &kp K      &kp L      &kp RBKT   &kp RET
+                &kp LCTRL &kp TAB  &kp Z    &kp X        &kp C    &kp V              &kp B      &kp N            &kp M      &kp COMMA  &kp GRAVE  &trans
+                &none     &none    &none    &kp LALT     &kp EXCL &kp SPACE &kp C_MUTE &kp SPACE  &mm_semi_colon &kp DEL    &kp DEL    &mm_semi_colon &kp SPACE &kp C_PP
+            >;
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>, <&inc_dec_kp C_BRI_UP C_BRI_DN>;
+        };
+
+        symbols_layer {
+            bindings = <
+                &kp PRCNT &kp LS(GRAVE) &kp LS(EQUAL) &kp LS(N6) &kp LS(RA(LBKT)) &kp LS(RA(RBKT)) &kp N7 &kp N8 &kp N9 &kp LS(N7) &kp LS(RBKT) &kp BSPC
+                &kp CAPS  &kp RA(SEMI)  &kp DLLR      &kp RA(SQT) &kp RA(LBKT)    &kp RA(RBKT)     &kp N4 &kp N5 &kp N6 &kp RBKT   &kp UP       &kp LS(N0)
+                &kp RSFT  &kp RCTRL     &kp DOT       &kp LS(MINUS) &kp LS(N8)    &kp LS(N9)       &kp N1 &kp N2 &kp N3 &kp LEFT   &kp DOWN     &kp RIGHT
+                &none     &none    &none     &kp RALT   &kp LGUI  &kp GRAVE &kp C_MUTE &kp N0     &kp LGUI         &kp DEL    &kp DEL    &trans           &kp N0    &kp C_PP
+            >;
+            sensor-bindings = <&inc_dec_kp C_BRI_UP C_BRI_DN>, <&inc_dec_kp C_VOL_UP C_VOL_DN>;
+        };
+
+        function_layer {
+            bindings = <
+                &kp F1    &kp F2   &kp F3    &kp F4     &kp F5    &kp F6             &kp F7     &kp F8           &kp F9     &kp F10    &kp F11    &kp F12
+                &kp N1    &kp N2   &kp N3    &kp N4     &kp N5    &kp N6             &kp N7     &kp N8           &kp N9     &kp N0     &trans     &trans
+                &none     &none    &tog 4    &kp PSCRN  &kp KP_NUM &trans            &trans     &kp KP_NUM       &kp PSCRN  &tog 4     &trans     &trans
+                &none     &none    &none     &none      &none     &tog 4    &kp C_MUTE &tog 4     &trans           &trans     &trans     &trans           &tog 4    &kp C_PP
+            >;
+            sensor-bindings = <&inc_dec_kp C_BRI_UP C_BRI_DN>, <&inc_dec_kp C_VOL_UP C_VOL_DN>;
+        };
+
+        gaming_layer {
+            bindings = <
+                &kp ESC   &kp Q    &kp W    &kp E      &kp R      &kp T              &tog 4     &kp U            &none      &none      &kp BSPC   &none
+                &kp LSFT  &kp A    &kp S    &kp D      &kp F      &kp G              &none      &none            &none      &none      &none      &kp RET
+                &kp LCTRL &kp TAB  &none    &kp N1     &kp N2     &kp N3             &kp N4     &kp N5           &kp N6     &kp N7     &kp N8     &kp N9
+                &none     &none    &none    &kp RALT   &kp Z      &kp SPACE &kp C_MUTE &none      &none            &kp DEL    &kp DEL    &none            &none     &kp C_PP
+            >;
+            sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>, <&inc_dec_kp C_BRI_UP C_BRI_DN>;
+        };
+    };
+};
