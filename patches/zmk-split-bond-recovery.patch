@@ -1,0 +1,59 @@
+diff --git a/app/src/ble.c b/app/src/ble.c
+index 0000000..0000000 100644
+--- a/app/src/ble.c
++++ b/app/src/ble.c
+@@ -557,11 +557,26 @@ static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err) {
+     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+ 
+     if (!err) {
+         LOG_DBG("Security changed: %s level %u", addr, level);
+     } else {
+         LOG_ERR("Security failed: %s level %u err %d", addr, level, err);
++
++        /* Identity 0 is reserved for split BLE, so recovering its bond cannot
++         * disturb any of the host-device profiles (identities 1..N). */
++        struct bt_conn_info info;
++        int info_err = bt_conn_get_info(conn, &info);
++        if (info_err || info.id != BT_ID_DEFAULT) {
++            return;
++        }
++
++        int unpair_err = bt_unpair(info.id, bt_conn_get_dst(conn));
++        if (unpair_err) {
++            LOG_ERR("Failed to clear stale split BLE bond for %s (err %d)", addr, unpair_err);
++        } else {
++            LOG_WRN("Cleared split BLE bond after security failure for %s", addr);
++        }
+     }
+ }
+ 
+ static void le_param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency,
+                              uint16_t timeout) {
+diff --git a/app/src/split/bluetooth/peripheral.c b/app/src/split/bluetooth/peripheral.c
+index 0000000..0000000 100644
+--- a/app/src/split/bluetooth/peripheral.c
++++ b/app/src/split/bluetooth/peripheral.c
+@@ -117,8 +117,23 @@ static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err) {
+     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+ 
+     if (!err) {
+         LOG_DBG("Security changed: %s level %u", addr, level);
+     } else {
+         LOG_ERR("Security failed: %s level %u err %d", addr, level, err);
++
++        /* This callback runs only for the split peripheral; identity 0 is its
++         * split bond and is separate from all host-device profile bonds. */
++        struct bt_conn_info info;
++        int info_err = bt_conn_get_info(conn, &info);
++        if (info_err || info.id != BT_ID_DEFAULT) {
++            return;
++        }
++
++        int unpair_err = bt_unpair(info.id, bt_conn_get_dst(conn));
++        if (unpair_err) {
++            LOG_ERR("Failed to clear stale split BLE bond for %s (err %d)", addr, unpair_err);
++        } else {
++            LOG_WRN("Cleared split BLE bond after security failure for %s", addr);
++        }
+     }
+ }

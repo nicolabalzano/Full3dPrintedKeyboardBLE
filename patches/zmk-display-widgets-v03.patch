@@ -1,0 +1,368 @@
+diff --git a/app/include/dt-bindings/zmk/hid_indicators.h b/app/include/dt-bindings/zmk/hid_indicators.h
+new file mode 100644
+index 00000000..fcd27700
+--- /dev/null
++++ b/app/include/dt-bindings/zmk/hid_indicators.h
+@@ -0,0 +1,18 @@
++/*
++ * Copyright (c) 2026 The ZMK Contributors
++ *
++ * SPDX-License-Identifier: MIT
++ */
++
++#pragma once
++
++#include <dt-bindings/zmk/hid_usage.h>
++
++// hid.h defines HID_USAGE_LED_NUM_LOCK as the minimum value, so that is bit
++// zero in the report, and all other indicators are relative to that.
++
++#define HID_INDICATOR_NUM_LOCK (1 << (HID_USAGE_LED_NUM_LOCK - HID_USAGE_LED_NUM_LOCK))
++#define HID_INDICATOR_CAPS_LOCK (1 << (HID_USAGE_LED_CAPS_LOCK - HID_USAGE_LED_NUM_LOCK))
++#define HID_INDICATOR_SCROLL_LOCK (1 << (HID_USAGE_LED_SCROLL_LOCK - HID_USAGE_LED_NUM_LOCK))
++#define HID_INDICATOR_COMPOSE (1 << (HID_USAGE_LED_COMPOSE - HID_USAGE_LED_NUM_LOCK))
++#define HID_INDICATOR_KANA (1 << (HID_USAGE_LED_KANA - HID_USAGE_LED_NUM_LOCK))
+diff --git a/app/include/zmk/display/widgets/hid_indicators.h b/app/include/zmk/display/widgets/hid_indicators.h
+new file mode 100644
+index 00000000..8fe54dd3
+--- /dev/null
++++ b/app/include/zmk/display/widgets/hid_indicators.h
+@@ -0,0 +1,19 @@
++/*
++ * Copyright (c) 2024 The ZMK Contributors
++ *
++ * SPDX-License-Identifier: MIT
++ */
++
++#pragma once
++
++#include <lvgl.h>
++#include <zephyr/kernel.h>
++
++struct zmk_widget_hid_indicators {
++    sys_snode_t node;
++    lv_obj_t *obj;
++    lv_obj_t *label;
++};
++
++int zmk_widget_hid_indicators_init(struct zmk_widget_hid_indicators *widget, lv_obj_t *parent);
++lv_obj_t *zmk_widget_hid_indicators_obj(struct zmk_widget_hid_indicators *widget);
+diff --git a/app/src/display/status_screen.c b/app/src/display/status_screen.c
+index 58de09ae..8d6af45f 100644
+--- a/app/src/display/status_screen.c
++++ b/app/src/display/status_screen.c
+@@ -9,11 +9,15 @@
+ #include <zmk/display/widgets/battery_status.h>
+ #include <zmk/display/widgets/layer_status.h>
+ #include <zmk/display/widgets/wpm_status.h>
++#include <zmk/display/widgets/hid_indicators.h>
+ #include <zmk/display/status_screen.h>
+ 
+ #include <zephyr/logging/log.h>
+ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
+ 
++LV_FONT_DECLARE(custom_montserrat_ui_12);
++LV_FONT_DECLARE(custom_montserrat_ui_16);
++
+ #if IS_ENABLED(CONFIG_ZMK_WIDGET_BATTERY_STATUS)
+ static struct zmk_widget_battery_status battery_status_widget;
+ #endif
+@@ -34,9 +38,14 @@ static struct zmk_widget_layer_status layer_status_widget;
+ static struct zmk_widget_wpm_status wpm_status_widget;
+ #endif
+ 
++#if IS_ENABLED(CONFIG_ZMK_WIDGET_HID_INDICATORS)
++static struct zmk_widget_hid_indicators hid_indicators_widget;
++#endif
++
+ lv_obj_t *zmk_display_status_screen() {
+     lv_obj_t *screen;
+     screen = lv_obj_create(NULL);
++    lv_obj_set_style_text_font(screen, &custom_montserrat_ui_16, LV_PART_MAIN);
+ 
+ #if IS_ENABLED(CONFIG_ZMK_WIDGET_BATTERY_STATUS)
+     zmk_widget_battery_status_init(&battery_status_widget, screen);
+@@ -57,7 +66,7 @@ lv_obj_t *zmk_display_status_screen() {
+ #if IS_ENABLED(CONFIG_ZMK_WIDGET_LAYER_STATUS)
+     zmk_widget_layer_status_init(&layer_status_widget, screen);
+     lv_obj_set_style_text_font(zmk_widget_layer_status_obj(&layer_status_widget),
+-                               lv_theme_get_font_small(screen), LV_PART_MAIN);
++                               &custom_montserrat_ui_12, LV_PART_MAIN);
+     lv_obj_align(zmk_widget_layer_status_obj(&layer_status_widget), LV_ALIGN_BOTTOM_LEFT, 0, 0);
+ #endif
+ 
+@@ -65,5 +74,10 @@ lv_obj_t *zmk_display_status_screen() {
+     zmk_widget_wpm_status_init(&wpm_status_widget, screen);
+     lv_obj_align(zmk_widget_wpm_status_obj(&wpm_status_widget), LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+ #endif
++
++#if IS_ENABLED(CONFIG_ZMK_WIDGET_HID_INDICATORS)
++    zmk_widget_hid_indicators_init(&hid_indicators_widget, screen);
++    lv_obj_set_pos(zmk_widget_hid_indicators_obj(&hid_indicators_widget), 0, LV_VER_RES - 16);
++#endif
+     return screen;
+ }
+diff --git a/app/src/display/widgets/Kconfig b/app/src/display/widgets/Kconfig
+index 4c02983c..eaaa20f9 100644
+--- a/app/src/display/widgets/Kconfig
++++ b/app/src/display/widgets/Kconfig
+@@ -36,4 +36,9 @@ config ZMK_WIDGET_WPM_STATUS
+     select LV_USE_LABEL
+     select ZMK_WPM
+ 
++config ZMK_WIDGET_HID_INDICATORS
++    bool "Widget for Caps Lock status"
++    depends on ZMK_HID_INDICATORS || ZMK_SPLIT_PERIPHERAL_HID_INDICATORS
++    select LV_USE_LABEL
++
+ endmenu
+diff --git a/app/src/display/widgets/hid_indicators.c b/app/src/display/widgets/hid_indicators.c
+new file mode 100644
+index 00000000..8077f73b
+--- /dev/null
++++ b/app/src/display/widgets/hid_indicators.c
+@@ -0,0 +1,82 @@
++/*
++ * Copyright (c) 2024 The ZMK Contributors
++ *
++ * SPDX-License-Identifier: MIT
++ */
++
++#include <zephyr/kernel.h>
++
++#include <zephyr/logging/log.h>
++LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
++
++#include <zmk/display.h>
++#include <zmk/display/widgets/hid_indicators.h>
++#include <zmk/event_manager.h>
++#include <zmk/events/hid_indicators_changed.h>
++#include <zmk/hid_indicators_types.h>
++#include <dt-bindings/zmk/hid_indicators.h>
++
++LV_FONT_DECLARE(custom_montserrat_ui_12);
++
++static sys_slist_t widgets = SYS_SLIST_STATIC_INIT(&widgets);
++
++/* Cache the last received indicator state. On the peripheral the state arrives
++ * only via the zmk_hid_indicators_changed event; there is no endpoint profile
++ * to query, so we maintain our own copy here. */
++static zmk_hid_indicators_t cached_indicators = 0;
++
++struct hid_indicators_state {
++    zmk_hid_indicators_t indicators;
++};
++
++static struct hid_indicators_state get_state(const zmk_event_t *eh) {
++    if (eh != NULL) {
++        const struct zmk_hid_indicators_changed *ev = as_zmk_hid_indicators_changed(eh);
++        if (ev != NULL) {
++            cached_indicators = ev->indicators;
++        }
++    }
++    return (struct hid_indicators_state){.indicators = cached_indicators};
++}
++
++static void set_status_text(struct zmk_widget_hid_indicators *widget,
++                            struct hid_indicators_state state) {
++    bool caps = (state.indicators & HID_INDICATOR_CAPS_LOCK) != 0;
++    lv_label_set_text(widget->label, caps ? "[A]" : "[a]");
++}
++
++static void hid_indicators_update_cb(struct hid_indicators_state state) {
++    struct zmk_widget_hid_indicators *widget;
++    SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) {
++        set_status_text(widget, state);
++    }
++}
++
++ZMK_DISPLAY_WIDGET_LISTENER(widget_hid_indicators, struct hid_indicators_state,
++                            hid_indicators_update_cb, get_state)
++ZMK_SUBSCRIPTION(widget_hid_indicators, zmk_hid_indicators_changed);
++
++int zmk_widget_hid_indicators_init(struct zmk_widget_hid_indicators *widget, lv_obj_t *parent) {
++    widget->obj = lv_obj_create(parent);
++    lv_obj_set_size(widget->obj, 24, 16);
++    lv_obj_clear_flag(widget->obj, LV_OBJ_FLAG_SCROLLABLE);
++    lv_obj_set_style_bg_opa(widget->obj, LV_OPA_TRANSP, LV_PART_MAIN);
++    lv_obj_set_style_border_width(widget->obj, 0, LV_PART_MAIN);
++    lv_obj_set_style_pad_all(widget->obj, 0, LV_PART_MAIN);
++
++    widget->label = lv_label_create(widget->obj);
++    lv_obj_set_style_text_font(widget->label, &custom_montserrat_ui_12, LV_PART_MAIN);
++    lv_obj_set_style_text_color(widget->label, lv_color_black(), LV_PART_MAIN);
++    lv_label_set_text(widget->label, "[a]");
++    lv_obj_center(widget->label);
++
++    sys_slist_append(&widgets, &widget->node);
++
++    set_status_text(widget, (struct hid_indicators_state){.indicators = cached_indicators});
++    widget_hid_indicators_init();
++    return 0;
++}
++
++lv_obj_t *zmk_widget_hid_indicators_obj(struct zmk_widget_hid_indicators *widget) {
++    return widget->obj;
++}
+diff --git a/app/src/display/widgets/output_status.c b/app/src/display/widgets/output_status.c
+index 7b6f9486..f8415907 100644
+--- a/app/src/display/widgets/output_status.c
++++ b/app/src/display/widgets/output_status.c
+@@ -23,40 +23,20 @@ static sys_slist_t widgets = SYS_SLIST_STATIC_INIT(&widgets);
+ struct output_status_state {
+-    struct zmk_endpoint_instance selected_endpoint;
++    uint8_t active_profile_index;
+     bool active_profile_connected;
+-    bool active_profile_bonded;
+ };
+ 
+ static struct output_status_state get_state(const zmk_event_t *_eh) {
+-    return (struct output_status_state){.selected_endpoint = zmk_endpoints_selected(),
+-                                        .active_profile_connected =
+-                                            zmk_ble_active_profile_is_connected(),
+-                                        .active_profile_bonded = !zmk_ble_active_profile_is_open()};
+-    ;
++    return (struct output_status_state){
++        .active_profile_index = zmk_ble_active_profile_index(),
++        .active_profile_connected = zmk_ble_active_profile_is_connected(),
++    };
+ }
+ 
+ static void set_status_symbol(lv_obj_t *label, struct output_status_state state) {
+-    char text[20] = {};
+-
+-    switch (state.selected_endpoint.transport) {
+-    case ZMK_TRANSPORT_USB:
+-        strcat(text, LV_SYMBOL_USB);
+-        break;
+-    case ZMK_TRANSPORT_BLE:
+-        if (state.active_profile_bonded) {
+-            if (state.active_profile_connected) {
+-                snprintf(text, sizeof(text), LV_SYMBOL_WIFI " %i " LV_SYMBOL_OK,
+-                         state.selected_endpoint.ble.profile_index + 1);
+-            } else {
+-                snprintf(text, sizeof(text), LV_SYMBOL_WIFI " %i " LV_SYMBOL_CLOSE,
+-                         state.selected_endpoint.ble.profile_index + 1);
+-            }
+-        } else {
+-            snprintf(text, sizeof(text), LV_SYMBOL_WIFI " %i " LV_SYMBOL_SETTINGS,
+-                     state.selected_endpoint.ble.profile_index + 1);
+-        }
+-        break;
+-    }
+-
++    char text[16];
++    const char *symbol = state.active_profile_connected ? LV_SYMBOL_WIFI : LV_SYMBOL_CLOSE;
++    snprintf(text, sizeof(text), "%s BT %u", symbol,
++             (unsigned int)state.active_profile_index + 1);
+     lv_label_set_text(label, text);
+ }
+ 
+diff --git a/app/src/split/bluetooth/central.c b/app/src/split/bluetooth/central.c
+index 685deb51..7dc0043b 100644
+--- a/app/src/split/bluetooth/central.c
++++ b/app/src/split/bluetooth/central.c
+@@ -32,6 +32,9 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
+ #include <zmk/events/battery_state_changed.h>
+ #include <zmk/pointing/input_split.h>
+ #include <zmk/hid_indicators_types.h>
++#if IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
++#include <zmk/hid_indicators.h>
++#endif
+ #include <zmk/physical_layouts.h>
+ 
+ static int start_scanning(void);
+@@ -535,6 +538,38 @@ static void update_peripherals_selected_physical_layout(struct k_work *_work) {
+ K_WORK_DEFINE(update_peripherals_selected_layouts_work,
+               update_peripherals_selected_physical_layout);
+ 
++#if IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
++static int update_peripheral_hid_indicators(struct peripheral_slot *slot,
++                                           zmk_hid_indicators_t indicators) {
++    if (slot->state != PERIPHERAL_SLOT_STATE_CONNECTED) {
++        return -ENOTCONN;
++    }
++
++    if (!slot->update_hid_indicators || bt_conn_get_security(slot->conn) < BT_SECURITY_L2) {
++        // Discovery/security completion will replay the current host state.
++        return -EAGAIN;
++    }
++
++    int err = bt_gatt_write_without_response(slot->conn, slot->update_hid_indicators,
++                                           &indicators, sizeof(indicators), true);
++    if (err) {
++        LOG_ERR("Failed to write HID indicator characteristic (err %d)", err);
++    } else {
++        LOG_DBG("Sent HID indicators to split peripheral: 0x%02x", indicators);
++    }
++    return err;
++}
++
++static void sync_peripheral_hid_indicators(struct k_work *_work) {
++    zmk_hid_indicators_t indicators = zmk_hid_indicators_get_current_profile();
++    for (int i = 0; i < ZMK_SPLIT_BLE_PERIPHERAL_COUNT; i++) {
++        update_peripheral_hid_indicators(&peripherals[i], indicators);
++    }
++}
++
++K_WORK_DEFINE(sync_peripheral_hid_indicators_work, sync_peripheral_hid_indicators);
++#endif
++
+ static uint8_t split_central_chrc_discovery_func(struct bt_conn *conn,
+                                                  const struct bt_gatt_attr *attr,
+                                                  struct bt_gatt_discover_params *params) {
+@@ -619,6 +654,7 @@ static uint8_t split_central_chrc_discovery_func(struct bt_conn *conn,
+                                 BT_UUID_DECLARE_128(ZMK_SPLIT_BT_UPDATE_HID_INDICATORS_UUID))) {
+             LOG_DBG("Found update HID indicators handle");
+             slot->update_hid_indicators = bt_gatt_attr_value_handle(attr);
++            k_work_submit(&sync_peripheral_hid_indicators_work);
+ #endif // IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
+ #if IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING)
+         } else if (!bt_uuid_cmp(((struct bt_gatt_chrc *)attr->user_data)->uuid,
+@@ -990,7 +1026,7 @@ static void split_central_disconnected(struct bt_conn *conn, uint8_t reason) {
+ static void split_central_security_changed(struct bt_conn *conn, bt_security_t level,
+                                            enum bt_security_err err) {
+     struct peripheral_slot *slot = peripheral_slot_for_conn(conn);
+-    if (!slot || !slot->selected_physical_layout_handle) {
++    if (!slot) {
+         return;
+     }
+ 
+@@ -1005,6 +1041,9 @@ static void split_central_security_changed(struct bt_conn *conn, bt_security_t l
+     }
+ 
+     k_work_submit(&update_peripherals_selected_layouts_work);
++#if IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
++    k_work_submit(&sync_peripheral_hid_indicators_work);
++#endif
+ }
+ 
+ static struct bt_conn_cb conn_callbacks = {
+@@ -1077,24 +1116,9 @@ void split_central_split_run_callback(struct k_work *work) {
+             break;
+ #if IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
+         case ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_HID_INDICATORS:
+-            LOG_WRN("do the indicators dance");
+-            if (peripherals[payload_wrapper.source].update_hid_indicators == 0) {
+-                // It appears that sometimes the peripheral is considered connected
+-                // before the GATT characteristics have been discovered. If this is
+-                // the case, the update_hid_indicators handle will not yet be set.
+-                LOG_WRN("NO HANDLE TO SET ON PERIPHERAL");
+-                break;
+-            }
+-
+-            int err = bt_gatt_write_without_response(
+-                peripherals[payload_wrapper.source].conn,
+-                peripherals[payload_wrapper.source].update_hid_indicators,
+-                &payload_wrapper.cmd.data.set_hid_indicators.indicators,
+-                sizeof(payload_wrapper.cmd.data.set_hid_indicators.indicators), true);
+-
+-            if (err) {
+-                LOG_ERR("Failed to write HID indicator characteristic (err %d)", err);
+-            }
++            update_peripheral_hid_indicators(
++                &peripherals[payload_wrapper.source],
++                payload_wrapper.cmd.data.set_hid_indicators.indicators);
+             break;
+ #endif // IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
+         default:

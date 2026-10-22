@@ -59,22 +59,23 @@
         };
 
         combo_bt_sel_0 {
-            timeout-ms = <50>;
-            key-positions = <1 2>;
+            timeout-ms = <100>;
+            key-positions = <32 33>;
             bindings = <&bt BT_SEL 0>;
         };
 
         combo_bt_sel_1 {
-            timeout-ms = <50>;
-            key-positions = <2 3>;
+            timeout-ms = <100>;
+            key-positions = <33 34>;
             bindings = <&bt BT_SEL 1>;
         };
 
         combo_bt_sel_2 {
-            timeout-ms = <50>;
-            key-positions = <3 4>;
+            timeout-ms = <100>;
+            key-positions = <34 35>;
             bindings = <&bt BT_SEL 2>;
         };
+
     };
 
     keymap {
@@ -94,7 +95,7 @@
             bindings = <
                 &kp ESC   &kp Q    &kp W    &kp LS(LBKT) &kp LBKT &kp T              &kp Y      &kp BSLH         &kp EQUAL  &kp SEMI   &kp P      &kp BSPC
                 &kp LSFT  &kp SQT  &kp S    &kp D        &kp F    &kp G              &kp H      &kp J            &kp K      &kp L      &kp RBKT   &kp RET
-                &kp LCTRL &kp TAB  &kp Z    &kp X        &kp C    &kp V              &kp B      &kp N            &kp M      &kp COMMA  &kp GRAVE  &trans
+                &kp LCTRL &kp TAB  &kp Z    &kp X        &kp C    &kp V              &kp B      &kp N            &kp M      &kp RA(EQUAL)  &kp RA(MINUS)  &trans
                 &none     &none    &none    &kp LALT     &kp EXCL &kp SPACE &kp C_MUTE &kp SPACE  &mm_semi_colon &kp DEL    &kp DEL    &mm_semi_colon &kp SPACE &kp C_PP
             >;
             sensor-bindings = <&inc_dec_kp C_VOL_UP C_VOL_DN>, <&inc_dec_kp C_BRI_UP C_BRI_DN>;

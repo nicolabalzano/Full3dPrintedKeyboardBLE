@@ -3,4 +3,42 @@ on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build:
-    uses: zmkfirmware/zmk/.github/workflows/build-user-config.yml@v0.3
+    runs-on: ubuntu-latest
+    container:
+      image: zmkfirmware/zmk-build-arm:stable
+    strategy:
+      fail-fast: false
+      matrix:
+        shield: [settings_reset, custom_left, custom_right]
+    steps:
+      - name: Checkout config
+        uses: actions/checkout@v4
+
+      - name: Initialize west workspace
+        run: |
+          west init -l config
+          west update --fetch-opt=--filter=tree:0
+          west zephyr-export
+
+      - name: Apply BLE profile identity patch
+        run: ./scripts/apply-zmk-profile-identities.sh zmk
+
+      - name: Apply display widget patch
+        run: ./scripts/apply-zmk-display-widgets.sh zmk
+
+      - name: Apply split BLE bond recovery patch
+        run: ./scripts/apply-zmk-split-bond-recovery.sh zmk
+
+      - name: Build ${{ matrix.shield }}
+        run: >-
+          west build -s zmk/app -d build/${{ matrix.shield }}
+          -b nice_nano_v2 --
+          -DZMK_CONFIG=${GITHUB_WORKSPACE}/config
+          -DZMK_EXTRA_MODULES=${GITHUB_WORKSPACE}
+          -DSHIELD=${{ matrix.shield }}
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.shield }}
+          path: build/${{ matrix.shield }}/zephyr/zmk.uf2

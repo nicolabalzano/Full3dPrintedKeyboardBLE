@@ -1,0 +1,9 @@
+if(CONFIG_ZMK_DISPLAY)
+  zephyr_library()
+  zephyr_library_sources(
+    src/display/fonts/custom_montserrat_ui_12.c
+    src/display/fonts/custom_montserrat_ui_16.c
+    src/display/fonts/custom_symbols_ui_12.c
+    src/display/fonts/custom_symbols_ui_16.c
+  )
+endif()
